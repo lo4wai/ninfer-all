@@ -3,6 +3,27 @@
 set(NINFER_DEVICE_PROFILES_FILE ${CMAKE_CURRENT_SOURCE_DIR}/engine/device_profiles.json)
 set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${NINFER_DEVICE_PROFILES_FILE})
 file(READ ${NINFER_DEVICE_PROFILES_FILE} NINFER_DEVICE_PROFILES_JSON)
+# MSVC limits each string-literal token to 16,380 single-byte characters. Keep chunks smaller and
+# let C++ concatenate adjacent raw literals so the embedded profile remains one string_view.
+string(LENGTH "${NINFER_DEVICE_PROFILES_JSON}" NINFER_DEVICE_PROFILES_JSON_LENGTH)
+set(NINFER_DEVICE_PROFILES_CPP "")
+set(_ninfer_profiles_offset 0)
+set(_ninfer_profiles_chunk_size 8000)
+while(_ninfer_profiles_offset LESS NINFER_DEVICE_PROFILES_JSON_LENGTH)
+  math(EXPR _ninfer_profiles_remaining
+       "${NINFER_DEVICE_PROFILES_JSON_LENGTH} - ${_ninfer_profiles_offset}")
+  if(_ninfer_profiles_remaining GREATER _ninfer_profiles_chunk_size)
+    set(_ninfer_profiles_length ${_ninfer_profiles_chunk_size})
+  else()
+    set(_ninfer_profiles_length ${_ninfer_profiles_remaining})
+  endif()
+  string(SUBSTRING "${NINFER_DEVICE_PROFILES_JSON}" ${_ninfer_profiles_offset}
+         ${_ninfer_profiles_length} _ninfer_profiles_chunk)
+  string(APPEND NINFER_DEVICE_PROFILES_CPP
+         "R\"ninfer_json(${_ninfer_profiles_chunk})ninfer_json\"\n")
+  math(EXPR _ninfer_profiles_offset
+       "${_ninfer_profiles_offset} + ${_ninfer_profiles_length}")
+endwhile()
 configure_file(engine/device_profiles_builtin.cpp.in
                ${CMAKE_CURRENT_BINARY_DIR}/engine/device_profiles_builtin.cpp @ONLY)
 

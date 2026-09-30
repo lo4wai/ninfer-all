@@ -66,6 +66,7 @@ inline constexpr int bf16_tma_scratch_bytes =
           : bf16_epilogue_bytes<Schedule, Epilogue>)+127) /
     128 * 128;
 
+#if !defined(NINFER_SM8X_COMPAT)
 template <class Schedule, bool FullTokens, class Output, class Epilogue>
 __global__
 __launch_bounds__(Schedule::kThreads, Schedule::kMinBlocksPerSm) void bf16_a16_tma_mma_kernel(
@@ -123,6 +124,7 @@ __launch_bounds__(Schedule::kThreads, Schedule::kMinBlocksPerSm) void bf16_a16_t
     bf16_finish_mma_tile<Schedule, FullTokens>(output, epilogue, storage, accum, row_begin,
                                                token_begin, rows, token_offset + count, warp, lane);
 }
+#endif
 
 template <class Schedule, class Output, class Epilogue>
 void launch_bf16_a16_mma(const Bf16A16Operands& p, Output output, Epilogue epilogue,
